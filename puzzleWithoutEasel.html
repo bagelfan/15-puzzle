@@ -24,18 +24,26 @@ let sizes = [{size: 3, holes: [], label: "3 x 3"},
     {size: 5, holes: [12], label: 'donut'},
     {size: 6, holes: [0, 1, 4, 5, 6, 11, 24, 29, 30, 31, 34, 35], label:"circle"}];
 
-let sizeIndex = 4;
+let sizeIndex = Math.floor(Math.random()*5);
 let currentSize;
 
 let canvas = document.getElementById("myCanvas");
 let ctx = canvas.getContext("2d");
 
+let scaleFactor;
 let squarePositions;
 let emptySquare;
+let squaresList;
+let yOffset;
+let gameEdgeColor;
 let currentShape;
 function init(){
     currentShape = sizes[sizeIndex];
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
     currentSize = currentShape.size;
+	scaleFactor = window.innerHeight/793*((20-currentSize*1.5)/16);
+    yOffset = 30*scaleFactor;
 	squarePositions = [];
 
     for (let i = 0; i<currentSize**2; i++){
@@ -52,7 +60,28 @@ function init(){
     while (currentShape.holes.includes(emptySquare)){
         emptySquare--;
     };
+
+
+    squaresList = [];
+    for (let i = 0; i < currentSize**2; i++){
+        if (!currentShape.holes.includes(i) && i !== emptySquare){
+    	    squaresList.push(makeSquare(i));
+        }
+    };
+    gameEdgeColor = "black"
 }
+
+
+function makeSquare(num){
+    let square = {};
+    square.color = "hsl(" + (170+20*sizeIndex+5*(num-countHoles(num, currentShape.holes))) + ",50%,50%)"
+
+    square.x = (num%currentSize)*100*scaleFactor+canvas.width/2-currentSize*50*scaleFactor
+    square.y = Math.floor(num/currentSize)*100*scaleFactor+canvas.height/2-currentSize*50*scaleFactor-yOffset
+    return square;
+};
+
+
 
 function countHoles(num, holesList){
 	let holeCount = 0;
@@ -64,9 +93,176 @@ function countHoles(num, holesList){
         };
     }
     return holeCount;
-	
+
 }
 
+function draw(){
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+    //Time and Moves
+    ctx.font = "700 "+50*scaleFactor+"px Arial";
+    ctx.fillStyle = "black";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Time: " + timer.time, canvas.width/2,canvas.height/2-50*currentSize*scaleFactor-90*scaleFactor-yOffset)
+    ctx.fillText("Moves: " + moveCount, canvas.width/2, canvas.height/2-50*currentSize*scaleFactor-30*scaleFactor-yOffset)
+    //button
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.roundRect(canvas.width/2-130*scaleFactor, canvas.height/2+currentSize*50*scaleFactor+15*scaleFactor-yOffset, 260*scaleFactor, 80*scaleFactor, 10*scaleFactor);
+    ctx.stroke()
+    ctx.fillText("Scramble", canvas.width/2, canvas.height/2+currentSize*50*scaleFactor+55*scaleFactor-yOffset);
+    //solve
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.roundRect(canvas.width/2+260*scaleFactor, canvas.height/2-50*currentSize*scaleFactor-210*scaleFactor-yOffset, 180*scaleFactor, 80*scaleFactor, 10*scaleFactor);
+    ctx.stroke()
+    ctx.fillText("Solve", canvas.width/2+350*scaleFactor, canvas.height/2-50*currentSize*scaleFactor-170*scaleFactor-yOffset);
+    //size butttons
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "black";
+    for (let i = 0; i<sizes.length; i++){
+        ctx.beginPath();
+    	ctx.roundRect(canvas.width/2-(80+180*(i-2))*scaleFactor, canvas.height/2+currentSize*50*scaleFactor+110*scaleFactor-yOffset, 160*scaleFactor, 87*scaleFactor, 10*scaleFactor);
+        ctx.stroke();
+
+        ctx.fillText(sizes[sizes.length-i-1].label, canvas.width/2-(80+180*(i-2)-80)*scaleFactor,canvas.height/2+currentSize*50*scaleFactor+110*scaleFactor+87/2*scaleFactor-yOffset)
+    }
+    let number;
+	for (let i = 0; i<squaresList.length; i++){
+    	if (squaresList[i] !== -1){
+    		ctx.fillStyle = squaresList[i].color;
+        	ctx.beginPath();
+			ctx.roundRect(squaresList[i].x, squaresList[i].y, 100*scaleFactor, 100*scaleFactor, 10*scaleFactor);
+			ctx.fill();
+        	ctx.strokeStyle = "black";
+        	ctx.lineWidth = 2;
+        	ctx.beginPath()
+        	ctx.roundRect(squaresList[i].x, squaresList[i].y, 100*scaleFactor, 100*scaleFactor, 10*scaleFactor);
+        	ctx.stroke();
+
+        	ctx.textAlign = "center";
+        	ctx.textBaseline = "middle";
+        	ctx.font = "700 "+50*scaleFactor+"px Arial";
+        	ctx.fillStyle = "white";
+
+            ctx.fillText(i+1, squaresList[i].x+50*scaleFactor, squaresList[i].y+50*scaleFactor)
+
+        }
+    }
+    //gameBorder
+    ctx.strokeStyle = gameEdgeColor;
+    ctx.lineWidth = 3;
+    if (currentShape.label !== "circle"){
+        ctx.beginPath();
+        ctx.roundRect(canvas.width/2-currentSize*50*scaleFactor, canvas.height/2-currentSize*50*scaleFactor-yOffset, currentSize*100*scaleFactor, currentSize*100*scaleFactor, 10*scaleFactor);
+        ctx.stroke();
+    };
+
+    if (currentShape.label === "donut"){
+    	ctx.beginPath();
+        ctx.roundRect(canvas.width/2-50*scaleFactor, canvas.height/2-50*scaleFactor-yOffset, 100*scaleFactor, 100*scaleFactor, 10*scaleFactor);
+        ctx.stroke();
+    };
+    if (currentShape.label === "circle"){
+        let radius = 10*scaleFactor
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2-100*scaleFactor+radius,canvas.height/2-300*scaleFactor-yOffset);
+        ctx.lineTo(canvas.width/2+100*scaleFactor-radius,canvas.height/2-300*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2+100*scaleFactor-radius,canvas.height/2-300*scaleFactor-yOffset+radius,radius,1.5*Math.PI,0,false);
+        ctx.lineTo(canvas.width/2+100*scaleFactor,canvas.height/2-200*scaleFactor-yOffset-radius);
+        ctx.arc(canvas.width/2+100*scaleFactor+radius,canvas.height/2-200*scaleFactor-yOffset-radius,radius,Math.PI,Math.PI*0.5,true);
+        ctx.lineTo(canvas.width/2+200*scaleFactor-radius,canvas.height/2-200*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2+200*scaleFactor-radius,canvas.height/2-200*scaleFactor-yOffset+radius,radius,1.5*Math.PI,0,false);
+        ctx.lineTo(canvas.width/2+200*scaleFactor,canvas.height/2-100*scaleFactor-yOffset-radius);
+        ctx.arc(canvas.width/2+200*scaleFactor+radius,canvas.height/2-100*scaleFactor-yOffset-radius,radius,Math.PI,Math.PI*0.5,true);
+        ctx.lineTo(canvas.width/2+300*scaleFactor-radius,canvas.height/2-100*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2+300*scaleFactor-radius,canvas.height/2-100*scaleFactor-yOffset+radius,radius,1.5*Math.PI,0,false);
+        ctx.lineTo(canvas.width/2+300*scaleFactor,canvas.height/2+100*scaleFactor-yOffset-radius);
+        ctx.arc(canvas.width/2+300*scaleFactor-radius,canvas.height/2+100*scaleFactor-yOffset-radius,radius, 0, 0.5*Math.PI, false);
+        ctx.lineTo(canvas.width/2+200*scaleFactor+radius,canvas.height/2+100*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2+200*scaleFactor+radius,canvas.height/2+100*scaleFactor-yOffset+radius,radius, 1.5*Math.PI, Math.PI, true);
+        ctx.lineTo(canvas.width/2+200*scaleFactor,canvas.height/2+200*scaleFactor-yOffset-radius);
+        ctx.arc(canvas.width/2+200*scaleFactor-radius,canvas.height/2+200*scaleFactor-yOffset-radius,radius, 0, 0.5*Math.PI, false);
+        ctx.lineTo(canvas.width/2+100*scaleFactor+radius,canvas.height/2+200*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2+100*scaleFactor+radius,canvas.height/2+200*scaleFactor-yOffset+radius,radius, 1.5*Math.PI, Math.PI, true);
+        ctx.lineTo(canvas.width/2+100*scaleFactor,canvas.height/2+300*scaleFactor-yOffset-radius);
+        ctx.arc(canvas.width/2+100*scaleFactor-radius,canvas.height/2+300*scaleFactor-yOffset-radius,radius, 0, 0.5*Math.PI, false);
+        ctx.lineTo(canvas.width/2-100*scaleFactor+radius,canvas.height/2+300*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2-100*scaleFactor+radius,canvas.height/2+300*scaleFactor-yOffset-radius,radius, 0.5*Math.PI, Math.PI, false);
+        ctx.lineTo(canvas.width/2-100*scaleFactor,canvas.height/2+200*scaleFactor-yOffset+radius);
+        ctx.arc(canvas.width/2-100*scaleFactor-radius,canvas.height/2+200*scaleFactor-yOffset+radius,radius,0,1.5*Math.PI, true);
+        ctx.lineTo(canvas.width/2-200*scaleFactor+radius,canvas.height/2+200*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2-200*scaleFactor+radius,canvas.height/2+200*scaleFactor-yOffset-radius,radius, 0.5*Math.PI, Math.PI, false);
+        ctx.lineTo(canvas.width/2-200*scaleFactor,canvas.height/2+100*scaleFactor-yOffset+radius);
+        ctx.arc(canvas.width/2-200*scaleFactor-radius,canvas.height/2+100*scaleFactor-yOffset+radius,radius,0,1.5*Math.PI, true);
+        ctx.lineTo(canvas.width/2-300*scaleFactor+radius,canvas.height/2+100*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2-300*scaleFactor+radius,canvas.height/2+100*scaleFactor-yOffset-radius,radius, 0.5*Math.PI, Math.PI, false);
+        ctx.lineTo(canvas.width/2-300*scaleFactor,canvas.height/2-100*scaleFactor-yOffset+radius);
+        ctx.arc(canvas.width/2-300*scaleFactor+radius,canvas.height/2-100*scaleFactor-yOffset+radius, radius, Math.PI, 1.5*Math.PI, false);
+        ctx.lineTo(canvas.width/2-200*scaleFactor-radius,canvas.height/2-100*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2-200*scaleFactor-radius,canvas.height/2-100*scaleFactor-yOffset-radius, radius, 0.5*Math.PI, 0, true);
+        ctx.lineTo(canvas.width/2-200*scaleFactor,canvas.height/2-200*scaleFactor-yOffset+radius);
+        ctx.arc(canvas.width/2-200*scaleFactor+radius,canvas.height/2-200*scaleFactor-yOffset+radius, radius, Math.PI, 1.5*Math.PI, false);
+        ctx.lineTo(canvas.width/2-100*scaleFactor-radius,canvas.height/2-200*scaleFactor-yOffset);
+        ctx.arc(canvas.width/2-100*scaleFactor-radius,canvas.height/2-200*scaleFactor-yOffset-radius, radius, 0.5*Math.PI, 0, true);
+        ctx.lineTo(canvas.width/2-100*scaleFactor,canvas.height/2-300*scaleFactor-yOffset+radius);
+        ctx.arc(canvas.width/2-100*scaleFactor+radius,canvas.height/2-300*scaleFactor-yOffset+radius, radius, Math.PI, 1.5*Math.PI, false);
+        ctx.stroke();
+    }
+
+}
+
+
+function move(object, dir, time, multiplier, speed){
+    object[dir] += speed*multiplier*scaleFactor;
+    if (time<(Math.floor(100/speed)-1)){
+        setTimeout(function(){
+            move(object, dir, time+1, multiplier,speed);
+        }, 4)
+    } else {
+        object[dir] += (100-speed*Math.floor(100/speed))*multiplier*scaleFactor;
+    }
+    draw()
+};
+function botCheckWall(key, state){
+    let nodeEmptySquare = state.indexOf(-1);
+    if (key === "ArrowRight"){
+        if (nodeEmptySquare%currentSize === 0){
+            return true;
+        };
+        if (state[nodeEmptySquare-1] === -2){
+            return true;
+        };
+    };
+    if (key === "ArrowLeft"){
+        if (nodeEmptySquare%currentSize === currentSize-1){
+            return true;
+        };
+        if (state[nodeEmptySquare+1] === -2){
+            return true;
+        };
+    };
+    if (key === "ArrowDown"){
+        if (Math.floor(nodeEmptySquare/currentSize) === 0){
+            return true;
+        };
+        if (state[nodeEmptySquare-currentSize] === -2){
+            return true;
+        };
+    };
+    if (key === "ArrowUp"){
+        if (Math.floor(nodeEmptySquare/currentSize) === currentSize-1){
+            return true;
+        };
+        if (state[nodeEmptySquare+currentSize] === -2){
+            return true;
+        };
+    };
+    return false;
+}
 function checkWall(key){
     if (key === "ArrowRight"){
         if (emptySquare%currentSize === 0){
@@ -113,33 +309,41 @@ function applyArrows(key, speed, fromScrambler){
         return;
     }
     if (key === "ArrowRight"){
+        move(squaresList[squarePositions[emptySquare-1]],'x',0, 1, speed);
         squarePositions[emptySquare] = squarePositions[emptySquare-1];
         squarePositions[emptySquare-1] = -1;
         emptySquare -= 1;
     };
     if (key === "ArrowLeft"){
+        move(squaresList[squarePositions[emptySquare+1]], 'x', 0, -1, speed)
         squarePositions[emptySquare] = squarePositions[emptySquare+1];
         squarePositions[emptySquare+1] = -1;
         emptySquare += 1;
     };
     if (key === "ArrowDown"){
+        move(squaresList[squarePositions[emptySquare-currentSize]], 'y', 0, 1, speed);
         squarePositions[emptySquare] = squarePositions[emptySquare-currentSize];
         squarePositions[emptySquare-currentSize] = -1;
         emptySquare -= currentSize;
     };
     if (key === "ArrowUp"){
+        move(squaresList[squarePositions[emptySquare+currentSize]], 'y', 0, -1, speed);
         squarePositions[emptySquare] = squarePositions[emptySquare+currentSize];
         squarePositions[emptySquare+currentSize] = -1;
         emptySquare += currentSize;
     };
     if (!fromScrambler){
         moveCount++;
+        draw()
     }
     if (checkWin()){
+        gameEdgeColor = "lime";
         if (!fromScrambler){
         	timer.pause()
         }
-    }
+    } else{
+        gameEdgeColor = "black"
+    };
 };
 function botArrows(key, state){
     let nodePositions = state.slice(0);
@@ -162,42 +366,7 @@ function botArrows(key, state){
     }
     return nodePositions;
 };
-function botCheckWall(key, state){
-    let nodeEmptySquare = state.indexOf(-1);
-    if (key === "ArrowRight"){
-        if (nodeEmptySquare%currentSize === 0){
-            return true;
-        };
-        if (state[nodeEmptySquare-1] === -2){
-            return true;
-        };
-    };
-    if (key === "ArrowLeft"){
-        if (nodeEmptySquare%currentSize === currentSize-1){
-            return true;
-        };
-        if (state[nodeEmptySquare+1] === -2){
-            return true;
-        };
-    };
-    if (key === "ArrowDown"){
-        if (Math.floor(nodeEmptySquare/currentSize) === 0){
-            return true;
-        };
-        if (state[nodeEmptySquare-currentSize] === -2){
-            return true;
-        };
-    };
-    if (key === "ArrowUp"){
-        if (Math.floor(nodeEmptySquare/currentSize) === currentSize-1){
-            return true;
-        };
-        if (state[nodeEmptySquare+currentSize] === -2){
-            return true;
-        };
-    };
-    return false;
-}
+
 function checkWin(){
     let won = true;
     for (let i = 0; i < currentSize**2; i++){
@@ -221,6 +390,7 @@ let timer = {
     },
     run: function(){
         this.time++;
+        this.draw()
         if (this.going){
             this.timeOutID  = setTimeout(function(){
                 timer.run()
@@ -234,8 +404,11 @@ let timer = {
     reset: function(){
         this.time = 0;
         this.pause();
+        this.draw();
     },
-
+    draw: function(){
+        draw()
+    }
 }
 let moveCount = 0;
 let arrows = ["ArrowRight", "ArrowDown","ArrowLeft", "ArrowUp"];
@@ -269,22 +442,8 @@ let scrambler = {
     }
 };
 deepLearner = {bestMoves: 1000, timesRun: 0, thisMoves: []}
-deepLearner.oldMatrix = [
-    0, 0, 12, 12, 0, 0,
-    0, 8, 8, 8, 8, 0,
-    12, 3, 3, 3, 3, 12,
-    12, 3, 3, 3, 3, 12,
-    0, 8, 1, 1, 8, 0,
-    0, 0, 1
-]
-deepLearner.currentMatrix = [
-    0, 0, 12, 12, 0, 0,
-    0, 8, 8, 8, 8, 0,
-    12, 3, 3, 3, 3, 12,
-    12, 3, 3, 3, 3, 12,
-    0, 8, 1, 1, 8, 0,
-    0, 0, 1
-]
+deepLearner.oldMatrix = JSON.parse("[" + localStorage.getItem("matrix") + "]");
+deepLearner.currentMatrix = deepLearner.oldMatrix.slice(0)
 let matrixes = [[
     1, 1, 1,
     1, 1, 1,
@@ -324,7 +483,7 @@ let bot = {
                 if (actualPosition !== -1){
                     columns = Math.abs(i%currentSize-actualPosition%currentSize);
                     rows = Math.abs(Math.floor(i/currentSize)-Math.floor(actualPosition/currentSize));
-                
+
                     if (sizeIndex === 3){
                         if (rows === 0 && Math.floor(i/currentSize) === 2 && columns !== 0){
                             distance += 2*matrixes[sizeIndex][i]
@@ -366,7 +525,7 @@ let bot = {
         if (depth > 11){
         	return;
         };
-        
+
         for (let i = 0; i<arrows.length; i++){
       		if ((node.prevArrow-i+4)%4 !== 2 && !botCheckWall(arrows[i], node.board)){
                 let newList = node.backTrackList.slice(0);
@@ -374,7 +533,7 @@ let bot = {
             	let newNode = {prevArrow: i, board: botArrows(arrows[i], node.board), backTrackList: newList}
             	node.nodesBelow.push(newNode)
             	this.search(newNode, depth+1);
-                
+
             }
         }
     },
@@ -397,7 +556,7 @@ let bot = {
             applyArrows(arrows[arrow], 8, false);
             this.previousBoards.push(squarePositions.slice(0))
         }
-        
+
         if (checkWin()){
             deepLearner.thisMoves.push(moveCount);
             deepLearner.timesRun++
@@ -414,13 +573,13 @@ let bot = {
                     deepLearner.currentMatrix = deepLearner.oldMatrix.slice(0)
                 }
                 for (let i = 0; i < deepLearner.currentMatrix.length; i++) {
-                    deepLearner.currentMatrix[i] += (Math.floor(Math.random()*5)/4)-0.5
+                    deepLearner.currentMatrix[i] += (Math.floor(Math.random()*9)/4)-1
                     if (deepLearner.currentMatrix[i]<0){
                         deepLearner.currentMatrix[i] = 0.25
                     }
                 }
                 if (deepLearner.timesRun > 100){
-                    localStorage.setItem("DeepLearner",deepLearner);
+                    localStorage.setItem("matrix",deepLearner.oldMatrix);
                     return;
                 }
                 deepLearner.thisMoves = []
@@ -451,6 +610,7 @@ let bot = {
 function scramble(){
     timer.reset()
     moveCount = 0;
+    draw()
     if (scrambler.scrambling){
     	scrambler.stop();
     }
@@ -488,6 +648,21 @@ window.onclick = function (e) {
             scramble()
         }
     }
+}
+window.onresize = function(){
+    let oldSF = scaleFactor;
+    let oldWidth = canvas.width
+    scaleFactor = window.innerHeight/793*((20-currentSize*1.5)/16);
+    canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+    yOffset = 30*scaleFactor;
+    for (let i = 0; i < squaresList.length; i++) {
+        squaresList[i].x -= oldWidth/2
+        squaresList[i].x *= scaleFactor/oldSF
+        squaresList[i].x += canvas.width/2
+        squaresList[i].y *= scaleFactor/oldSF
+    }
+    draw()
 }
 </script>
 </body>
